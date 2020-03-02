@@ -6,7 +6,7 @@
 
 (* Objective:
 
-This lab practices concepts of functors. 
+This lab practices concepts of functors.
 
 This part of the lab has been adapted from the functors chapter of
 Real World OCaml <http://dev.realworldocaml.org/functors.html>. *)
@@ -16,7 +16,7 @@ Functors - Part 1.
 
 For the first part of this lab, you will explore a realistic and
 useful application of functors -- a library to support interval
-computation. 
+computation.
 
 Intervals come up in many different contexts. As a concrete example,
 calendars need to associate events with time intervals (3-4pm or
@@ -52,7 +52,7 @@ used by the Stdlib.compare function:
     compare x y > 0     (* x > y *)
  *)
 
-module type ORDERED_TYPE = 
+module type ORDERED_TYPE =
   sig
     type t
     val compare : t -> t -> int
@@ -71,7 +71,7 @@ are built from).
 
 The functor definition starts out as
 
-    module MakeInterval (Endpoint : ORDERED_TYPE) = 
+    module MakeInterval (Endpoint : ORDERED_TYPE) =
       struct
         ...
       end
@@ -86,7 +86,7 @@ being defined by the functor.
 Now, complete the funcctor definition below.
 ......................................................................*)
 
-module MakeInterval (Endpoint : ORDERED_TYPE) = 
+module MakeInterval (Endpoint : ORDERED_TYPE) =
   struct
     type interval =
       | Interval of Endpoint.t * Endpoint.t
@@ -96,22 +96,37 @@ module MakeInterval (Endpoint : ORDERED_TYPE) =
        `high` inclusive. If `low` is greater than `high`, then the
        interval is empty. *)
     let create (low : Endpoint.t) (high : Endpoint.t) : interval =
-      failwith "create not implemented"
+      if compare low high > 0 then Empty
+      else Interval (low, high)
 
     (* is_empty intvl -- Returns true if and only if `intvl` is
        empty *)
     let is_empty (intvl : interval) : bool =
-      failwith "is_empty not implemented"
+      match intvl with
+      | Empty -> true
+      | _ -> false
 
     (* contains intvl x -- Returns true if and only if the value `x`
        is contained within `intvl` *)
     let contains (intvl : interval) (x : Endpoint.t) : bool =
-      failwith "contains not implemented"
+      match intvl with
+      | Empty -> false
+      | Interval (low, high) ->
+        let c1 = compare x low in
+        let c2 = compare x high in
+        (c1 = 0 || c1 > 0) && (c2 = 0 || c2 < 0)
 
     (* intersect intvl1 intvl2 -- Returns the intersection of `intvl1`
        and `intvl2` *)
     let intersect (intvl1 : interval) (intvl2 : interval) : interval =
-      failwith "intersect not implemented"
+      match intvl1, intvl2 with
+      | Empty, Empty -> Empty
+      | Empty, _ -> intvl2
+      | _, Empty -> intvl1
+      | Interval (l1, h1), Interval (l2, h2) ->
+        if (contains intvl1 l2) then Interval (l2, h1)
+        else if (contains intvl1 h2) then Interval (l1, h2)
+        else Empty
     end ;;
 
 (*......................................................................
@@ -119,7 +134,13 @@ Exercise 1B: Using the completed functor above, instantiate an integer
 interval module.
 ......................................................................*)
 
-module IntInterval = struct end ;;
+module IntInterval = MakeInterval (struct
+  type t = int
+  let compare (t1 : int) (t2 : int) =
+    if t1 < t2 then -1
+    else if t1 = t2 then 0
+    else 1
+end) ;;
 
 (*......................................................................
 Exercise 1C: Using your newly created integer interval module, create
@@ -161,8 +182,8 @@ give us a way of abstractly referring to the type for the endpoints of
 an interval.
 ......................................................................*)
 
-module type INTERVAL = 
-  sig 
+module type INTERVAL =
+  sig
     type interval
     type endpoint
     (* ... complete the interface here ... *)
@@ -194,9 +215,9 @@ module IntSafeInterval = struct end ;;
 
 (* Now, try evaluating the following expression in the REPL:
 
-    IntSafeInterval.create 2 3 ;; 
+    IntSafeInterval.create 2 3 ;;
 
-A type error will appear: 
+A type error will appear:
 
     Error: This expression has type int but an expression was expected of type
            IntInterval.endpoint
